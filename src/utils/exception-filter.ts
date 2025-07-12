@@ -9,37 +9,37 @@ export class CustomError extends Error {
   }
 }
 
-export class ValidationError extends CustomError {
+export class BadRequestException extends CustomError {
   constructor(message: string, details?: any) {
     super(400, message, details);
   }
 }
 
-export class AuthenticationError extends CustomError {
+export class UnauthorizedException extends CustomError {
   constructor(message: string, details?: any) {
     super(401, message, details);
   }
 }
 
-export class NotFoundError extends CustomError {
+export class NotFoundException extends CustomError {
   constructor(message: string, details?: any) {
     super(404, message, details);
   }
 }
 
-export class ForbiddenError extends CustomError {
+export class ForbiddenException extends CustomError {
   constructor(message: string, details?: any) {
     super(403, message, details);
   }
 }
 
-export class ConflictError extends CustomError {
+export class ConflictException extends CustomError {
   constructor(message: string, details?: any) {
     super(409, message, details);
   }
 }
 
-export class ServerError extends CustomError {
+export class InternalServerException extends CustomError {
   constructor(message: string, details?: any) {
     super(500, message, details);
   }

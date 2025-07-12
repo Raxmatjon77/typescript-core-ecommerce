@@ -2,7 +2,6 @@ import http from "http";
 import dotenv from "dotenv";
 import { Db } from "mongodb";
 dotenv.config();
-
 import { connectToMongo } from "./db/mongo";
 import { Auth } from "./modules/auth/auth.service";
 import { errorMiddleware } from "./middlewares/error-middleware";
@@ -10,17 +9,19 @@ import { addRoute, handleRequest, useMiddleware } from "./router";
 import { loggerMiddleware } from "./middlewares/logger.middleware";
 import { bodyParserMiddleware } from "./middlewares/body-parser.middleware";
 
+
+
 async function bootstrap() {
   const db: Db = await connectToMongo();
   const authController = new Auth(db);
-
-  useMiddleware(loggerMiddleware);
   useMiddleware(bodyParserMiddleware);
+  useMiddleware(loggerMiddleware);
+
 
  
   addRoute("POST", "/auth/signin", authController.signin.bind(authController));
-
   addRoute("POST", "/auth/signup", authController.signup.bind(authController));
+  addRoute("GET", "/auth/user/:id", authController.getUserById.bind(authController));
   useMiddleware(errorMiddleware);
 
   const server = http.createServer((req, res) => {
@@ -32,9 +33,10 @@ async function bootstrap() {
     handleRequest(req, res);
   });
 
-  server.listen(3000, () => {
+  server.listen(4000, () => {
     console.log("🚀 Server running at http://localhost:3000");
   });
 }
+
 
 bootstrap().catch(console.error);
