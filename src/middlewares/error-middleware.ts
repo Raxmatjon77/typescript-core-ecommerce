@@ -1,8 +1,5 @@
-import { Middleware } from "../types/middleware";
-import {
-  CustomError,
-  InternalServerException,
-} from "../utils/exception-filter";
+import { Middleware } from "@types";
+import { CustomError, InternalServerException } from "@utils";
 
 export const errorMiddleware: Middleware = async (req, res, next) => {
   try {
