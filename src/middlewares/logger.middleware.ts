@@ -1,5 +1,5 @@
-import { Middleware } from "../types/middleware";
-import { LoggerService } from "../utils/logger.service";
+import { Middleware } from "@types";
+import { LoggerService } from "@utils";
 import { IncomingMessage, ServerResponse } from "http";
 
 interface RequestWithBody extends IncomingMessage {
@@ -19,7 +19,7 @@ export const loggerMiddleware: Middleware = async (
   const start = Date.now();
 
   const logMessage = logger.createRequestLog(req);
-  logger.log(logMessage);
+  logger.log(logMessage, "info");
 
   const originalWrite = res.write.bind(res);
   const originalEnd = res.end.bind(res);

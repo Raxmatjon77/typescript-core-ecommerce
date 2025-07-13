@@ -1,7 +1,6 @@
-import { Middleware } from "../types/middleware";
+import { Middleware } from "@types";
 import { IncomingMessage, ServerResponse } from "http";
-import { verifyToken } from "@utils/jwt";
-import { UnauthorizedException } from "../utils/exception-filter";
+import { verifyToken, UnauthorizedException } from "@utils";
 
 interface JwtPayload {
   userId: string;

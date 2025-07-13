@@ -1,4 +1,4 @@
-import { Middleware } from "../types/middleware";
+import { Middleware } from "@types";
 
 export const bodyParserMiddleware: Middleware = (req, res, next) => {
   const contentType = req.headers["content-type"];
