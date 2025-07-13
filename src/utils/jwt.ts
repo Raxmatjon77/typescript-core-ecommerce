@@ -1,12 +1,10 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import { any } from "zod";
 dotenv.config();
 
-const secret = process.env.JWT_SECRET!
+const secret = process.env.JWT_SECRET!;
 export function signAccessToken(payload: object) {
-  
-  return jwt.sign(payload,  secret as any );
+  return jwt.sign(payload, secret as any);
 }
 
 export function signRefreshToken(payload: object) {
@@ -15,4 +13,8 @@ export function signRefreshToken(payload: object) {
 
 export function verifyToken(token: string) {
   return jwt.verify(token, secret);
+}
+
+export function decodeToken(token: string) {
+  return jwt.decode(token);
 }

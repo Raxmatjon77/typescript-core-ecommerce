@@ -1,5 +1,8 @@
 import { Middleware } from "../types/middleware";
-import { CustomError } from "../utils/exception-filter";
+import {
+  CustomError,
+  InternalServerException,
+} from "../utils/exception-filter";
 
 export const errorMiddleware: Middleware = async (req, res, next) => {
   try {
@@ -12,8 +15,6 @@ export const errorMiddleware: Middleware = async (req, res, next) => {
       );
       return;
     }
-    console.log(err);
-    
 
     if (err instanceof CustomError) {
       res.writeHead(err.statusCode, { "Content-Type": "application/json" });
@@ -28,14 +29,6 @@ export const errorMiddleware: Middleware = async (req, res, next) => {
       return;
     }
 
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(
-      JSON.stringify({
-        error: {
-          message: "Internal server error",
-          details: null,
-        },
-      })
-    );
+    throw new InternalServerException("An unexpected error occurred");
   }
 };
