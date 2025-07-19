@@ -1,5 +1,6 @@
 import { Middleware } from "@types";
 import { CustomError, InternalServerException } from "@utils";
+import { log } from "node:console";
 
 export const errorMiddleware: Middleware = async (req, res, next) => {
   try {
@@ -26,6 +27,18 @@ export const errorMiddleware: Middleware = async (req, res, next) => {
       return;
     }
 
+    log("Unexpected error in errorMiddleware:", error);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        error: {
+          message: "Internal Server Error",
+          details: error.message,
+        },
+      })
+    );
+    // Optionally, you can log the error to a logging service here
+    // e.g., logService.logError(error);
     throw new InternalServerException("An unexpected error occurred");
   }
 };

@@ -8,7 +8,7 @@ interface RequestWithUser extends IncomingMessage {
   body?: any;
 }
 
-export const authMiddleware: Middleware = async (
+export const CheckPermissionMiddleware: Middleware = async (
   req: RequestWithUser,
   res: ServerResponse,
   next
@@ -32,5 +32,12 @@ export const authMiddleware: Middleware = async (
     throw new UnauthorizedException("Invalid or expired token");
   }
 
+  console.log("User role:", req.user);
+
+  if (req.user.role !== "admin") {
+    throw new UnauthorizedException(
+      "Permission denied: [Admin access required"
+    );
+  }
   await next();
 };

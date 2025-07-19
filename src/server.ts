@@ -9,13 +9,17 @@ import {
   errorMiddleware,
   loggerMiddleware,
   bodyParserMiddleware,
+  CheckPermissionMiddleware,
+  basicAuthMiddlware,
 } from "@middlewares";
 
 import { Auth } from "@modules";
 import { connectToMongo } from "@db";
+import { dashboardUserController } from "@modules";
 async function bootstrap() {
   const db: Db = await connectToMongo();
   const authController = new Auth(db);
+  const dashboardController = new dashboardUserController(db);
   useMiddleware(bodyParserMiddleware);
   useMiddleware(loggerMiddleware);
 
@@ -25,7 +29,13 @@ async function bootstrap() {
     "GET",
     "/auth/user/",
     authController.getUserById.bind(authController),
-    [authMiddleware]
+    [authMiddleware, CheckPermissionMiddleware]
+  );
+  addRoute(
+    "GET",
+    "/dashboard/user/:userId",
+    dashboardController.getUserById.bind(dashboardController),
+    []
   );
   useMiddleware(errorMiddleware);
 
