@@ -15,6 +15,7 @@ export class Auth {
   constructor(db: Db) {
     this.#_db = db;
   }
+
   async signup(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const input = req.body;
     const existing = await this.#_db
