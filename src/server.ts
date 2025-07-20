@@ -13,13 +13,14 @@ import {
   basicAuthMiddlware,
 } from "@middlewares";
 
-import { Auth } from "@modules";
+import { Auth, ProductService } from "@modules";
 import { connectToMongo } from "@db";
 import { dashboardUserController } from "@modules";
 async function bootstrap() {
   const db: Db = await connectToMongo();
   const authController = new Auth(db);
-  const dashboardController = new dashboardUserController(db);
+  const UserController = new dashboardUserController(db);
+  const dashboardProductController = new ProductService(db);
   useMiddleware(bodyParserMiddleware);
   useMiddleware(loggerMiddleware);
 
@@ -34,8 +35,20 @@ async function bootstrap() {
   addRoute(
     "GET",
     "/dashboard/user/:userId",
-    dashboardController.getUserById.bind(dashboardController),
+    UserController.getUserById.bind(UserController),
     []
+  );
+  addRoute(
+    "POST",
+    "/dashboard/product",
+    dashboardProductController.create.bind(dashboardProductController),
+    [authMiddleware, CheckPermissionMiddleware]
+  );
+  addRoute(
+    "DELETE",
+    "/dashboard/product/:productId",
+    dashboardProductController.delete.bind(dashboardProductController),
+    [authMiddleware, CheckPermissionMiddleware]
   );
   useMiddleware(errorMiddleware);
 
