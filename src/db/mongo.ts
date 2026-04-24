@@ -1,17 +1,21 @@
 import { MongoClient, Db } from "mongodb";
 
-const uri = process.env.MONGO_URI!
-const dbName = process.env.DB_NAME!
+export interface MongoConnection {
+  client: MongoClient;
+  db: Db;
+  close(): Promise<void>;
+}
 
-let db: Db;
-
-export async function connectToMongo(): Promise<Db> {
-  if (db) return db;
-
+export async function createMongoConnection(
+  uri: string,
+  dbName: string
+): Promise<MongoConnection> {
   const client = new MongoClient(uri);
   await client.connect();
-  db = client.db(dbName);
-
-  console.log(`Connected to MongoDB: ${dbName}`);
-  return db;
+  const db = client.db(dbName);
+  return {
+    client,
+    db,
+    close: () => client.close(),
+  };
 }

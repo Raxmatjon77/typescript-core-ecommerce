@@ -1,35 +1,3 @@
-// {
-//   "compilerOptions": {
-//     "target": "ES2021",
-//     "module": "commonjs",
-//     "rootDir": "src",
-//     "paths": {
-//       // "@*": ["./src/*"],
-//       "@db/*": ["./src/db/*"],
-//       "@modules/*": ["./src/modules/*"],
-//       "@middlewares/*": ["./src/middlewares/*"],
-//       "@services/*": ["./src/services/*"],
-//       "@utils/*": ["./src/utils/*"],
-//       "@types/*": ["./src/types/*"],
-//       "@config/*": ["./src/config/*"],
-//       "@constants/*": ["./src/constants/*"],
-//       "@helpers/*": ["./src/helpers/*"],
-//       "@validations/*": ["./src/validations/*"],
-//       "@models/*": ["./src/models/*"]
-//     },
-
-//     "outDir": "dist",
-//     "moduleResolution": "node",
-//     "strict": true,
-//     "esModuleInterop": true,
-//     "resolveJsonModule": true,
-//     "incremental": true,
-//     "skipLibCheck": true,
-
-//   },
-//   "include": ["src"]
-// }
-
 {
   "compilerOptions": {
     "module": "commonjs",
@@ -37,7 +5,7 @@
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-      "esModuleInterop": true,
+    "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "paths": {
       "@*": ["src/*"]
@@ -53,5 +21,6 @@
     "strictBindCallApply": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  "include": ["src/**/*"]
 }

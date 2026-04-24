@@ -1,37 +1,49 @@
-import { Middleware } from "@types";
+import type { Middleware } from "@http/types";
+import { BadRequestException } from "@common/exceptions";
 
-export const bodyParserMiddleware: Middleware = (req, res, next) => {
-  const contentType = req.headers["content-type"];
-  if (
-    req.method === "GET" ||
-    req.method === "DELETE" ||
-    contentType !== "application/json"
-  ) {
-    return next();
-  }
+const SKIP_METHODS = new Set(["GET", "HEAD", "OPTIONS", "DELETE"]);
+const DEFAULT_MAX_BYTES = 1_048_576; // 1 MB
 
-  let data = "";
-  req.on("data", (chunk) => {
-    data += chunk;
-  });
-
-  req.on("end", () => {
-    try {
-      if (data) {
-        req.body = JSON.parse(data);
-      } else {
-        req.body = {};
-      }
-      next();
-    } catch {
-      res.writeHead(400, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ message: "Invalid JSON" }));
+export function bodyParserMiddleware(maxBytes = DEFAULT_MAX_BYTES): Middleware {
+  return async (req, res, next) => {
+    if (SKIP_METHODS.has(req.method ?? "")) {
+      (req as any).body = {};
+      await next();
+      return;
     }
-  });
 
-  req.on("error", (err) => {
-    console.error("Body parse error:", err);
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Body parse error" }));
-  });
-};
+    await new Promise<void>((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      let size = 0;
+
+      req.on("data", (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > maxBytes) {
+          reject(new BadRequestException("Request body too large"));
+          req.destroy();
+          return;
+        }
+        chunks.push(chunk);
+      });
+
+      req.on("end", () => {
+        const raw = Buffer.concat(chunks).toString("utf8");
+        if (!raw) {
+          (req as any).body = {};
+          resolve();
+          return;
+        }
+        try {
+          (req as any).body = JSON.parse(raw);
+          resolve();
+        } catch {
+          reject(new BadRequestException("Invalid JSON body"));
+        }
+      });
+
+      req.on("error", reject);
+    });
+
+    await next();
+  };
+}

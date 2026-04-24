@@ -1,9 +1,8 @@
-import { IncomingMessage } from "http";
-
 declare module "http" {
   interface IncomingMessage {
-    body?: any;
+    body?: unknown;
     params?: Record<string, string>;
+    query?: Record<string, string>;
     user?: { userId: string; role: string };
   }
 }

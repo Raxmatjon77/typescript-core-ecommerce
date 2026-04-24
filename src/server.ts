@@ -1,69 +1,48 @@
+import "dotenv/config";
 import http from "http";
-import dotenv from "dotenv";
+import { loadEnv } from "@config/env";
+import { LoggerService } from "@common/logger.service";
+import { createMongoConnection } from "@db/mongo";
+import { buildApp } from "./app";
 
-dotenv.config();
-import { Db } from "mongodb";
-import { addRoute, handleRequest, useMiddleware } from "./router";
-import {
-  authMiddleware,
-  errorMiddleware,
-  loggerMiddleware,
-  bodyParserMiddleware,
-  CheckPermissionMiddleware,
-  basicAuthMiddlware,
-} from "@middlewares";
+async function main() {
+  const env = loadEnv();
+  const logger = new LoggerService("server", env.LOG_LEVEL);
 
-import { Auth, ProductService } from "@modules";
-import { connectToMongo } from "@db";
-import { dashboardUserController } from "@modules";
-async function bootstrap() {
-  const db: Db = await connectToMongo();
-  const authController = new Auth(db);
-  const UserController = new dashboardUserController(db);
-  const dashboardProductController = new ProductService(db);
-  useMiddleware(bodyParserMiddleware);
-  useMiddleware(loggerMiddleware);
+  const mongo = await createMongoConnection(env.MONGO_URI, env.DB_NAME);
+  logger.info(`Connected to MongoDB: ${env.DB_NAME}`);
 
-  addRoute("POST", "/auth/signin", authController.signin.bind(authController));
-  addRoute("POST", "/auth/signup", authController.signup.bind(authController));
-  addRoute(
-    "GET",
-    "/auth/user/",
-    authController.getUserById.bind(authController),
-    [authMiddleware, CheckPermissionMiddleware]
-  );
-  addRoute(
-    "GET",
-    "/dashboard/user/:userId",
-    UserController.getUserById.bind(UserController),
-    []
-  );
-  addRoute(
-    "POST",
-    "/dashboard/product",
-    dashboardProductController.create.bind(dashboardProductController),
-    [authMiddleware, CheckPermissionMiddleware]
-  );
-  addRoute(
-    "DELETE",
-    "/dashboard/product/:productId",
-    dashboardProductController.delete.bind(dashboardProductController),
-    [authMiddleware, CheckPermissionMiddleware]
-  );
-  useMiddleware(errorMiddleware);
+  const router = buildApp({ db: mongo.db, env, logger });
 
   const server = http.createServer((req, res) => {
-    if (req.url === "/ping") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ message: "pong" }));
-    }
-
-    handleRequest(req, res);
+    router.handleRequest(req, res).catch((err) => {
+      logger.error(err);
+      if (!res.headersSent) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: { message: "Internal Server Error" } }));
+      }
+    });
   });
 
-  server.listen(process.env.PORT, () => {
-    console.log(`🚀 Server running at http://localhost:${process.env.PORT}`);
+  server.listen(env.PORT, () => {
+    logger.info(`Server listening on http://localhost:${env.PORT}`);
   });
+
+  async function shutdown(signal: string) {
+    logger.info(`${signal} received — shutting down`);
+    await new Promise<void>((resolve, reject) =>
+      server.close((err) => (err ? reject(err) : resolve()))
+    );
+    await mongo.close();
+    logger.info("Shutdown complete");
+    process.exit(0);
+  }
+
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 }
 
-bootstrap().catch(console.error);
+main().catch((err) => {
+  console.error("Fatal startup error:", err);
+  process.exit(1);
+});

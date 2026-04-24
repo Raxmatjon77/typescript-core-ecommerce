@@ -1,110 +1,58 @@
-import { Db, ObjectId } from "mongodb";
-import bcrypt from "bcrypt";
+import type { UserRepository } from "@modules/user/user.repository";
+import type { JwtService } from "@common/jwt.service";
+import type { PasswordService } from "@common/password.service";
+import type { User } from "@modules/user/user.model";
+import type { SignupBody } from "./dto/signup.dto";
+import type { SigninBody } from "./dto/signin.dto";
 import {
-  signAccessToken,
-  signRefreshToken,
-  ForbiddenException,
-  BadRequestException,
-} from "@utils";
-import { User, UserSchema } from "@models";
-import { IncomingMessage, ServerResponse } from "http";
+  ConflictException,
+  UnauthorizedException,
+  NotFoundException,
+} from "@common/exceptions";
 
-export class Auth {
-  readonly #_db: Db;
+export class AuthService {
+  constructor(
+    private readonly userRepo: UserRepository,
+    private readonly jwt: JwtService,
+    private readonly passwords: PasswordService
+  ) {}
 
-  constructor(db: Db) {
-    this.#_db = db;
-  }
+  async signup(body: SignupBody): Promise<Omit<User, "password">> {
+    const existing = await this.userRepo.findByEmail(body.email);
+    if (existing) throw new ConflictException("Email already registered");
 
-  async signup(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    const input = req.body;
-    const existing = await this.#_db
-      .collection<User>("users")
-      .findOne({ email: input.email });
-
-    if (!input.email || !input.password) {
-      throw new ForbiddenException("credentials required !");
-    }
-    if (existing) throw new ForbiddenException("User already exists");
-
-    const hashedPassword = await bcrypt
-      .hash(input.password, 10)
-      .catch((e) => console.log(e));
-
-    const user = UserSchema.parse({
-      email: input.email,
+    const hashedPassword = await this.passwords.hash(body.password);
+    const now = new Date();
+    const newUser = await this.userRepo.insert({
+      email: body.email,
       password: hashedPassword,
-      role: "user",
-      createdAt: new Date(),
+      role: body.role,
+      createdAt: now,
+      deletedAt: null,
     });
 
-    await this.#_db.collection("users").insertOne(user);
-    res.writeHead(201, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "User created" }));
+    const { password: _, ...safe } = newUser;
+    return safe;
   }
 
-  async signin(req: IncomingMessage, res: ServerResponse) {
-    const input = (req as any).body as { email: string; password: string };
+  async signin(body: SigninBody): Promise<{ accessToken: string; refreshToken: string }> {
+    const user = await this.userRepo.findByEmail(body.email);
+    if (!user) throw new UnauthorizedException("Invalid credentials");
 
-    const { email, password } = input;
-    const user = await this.#_db.collection<User>("users").findOne({ email });
-    if (!user) throw new BadRequestException("Invalid credentials");
+    const valid = await this.passwords.compare(body.password, user.password);
+    if (!valid) throw new UnauthorizedException("Invalid credentials");
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) throw new BadRequestException("Invalid credentials");
-
-    const payload = { userId: user._id?.toString(), role: user.role };
-
-    res.writeHead(201, { "Content-Type": "application/json" });
-    return res.end(
-      JSON.stringify({
-        accessToken: signAccessToken(payload),
-        refreshToken: signRefreshToken(payload),
-      })
-    );
+    const payload = { userId: String(user._id), role: user.role };
+    return {
+      accessToken: this.jwt.signAccessToken(payload),
+      refreshToken: this.jwt.signRefreshToken(payload),
+    };
   }
 
-  async getUserById(req: IncomingMessage, res: ServerResponse): Promise<any> {
-    const userId = req.user?.userId;
-    console.log("User ID:", userId);
-    if (!userId) throw new BadRequestException("User ID is required");
-
-    if (!/^[a-fA-F0-9]{24}$/.test(userId)) {
-      throw new BadRequestException("Invalid User ID format");
-    }
-    const users = await this.#_db.collection<User>("users").find().toArray();
-
-    if (users.length === 0) {
-      throw new BadRequestException("No users found");
-    }
-
-    const user = await this.#_db.collection<User>("users").findOne({
-      _id: new ObjectId(userId as string),
-    });
-
-    if (!user) throw new BadRequestException("User not found");
-
-    await this.#_test("test");
-    res.writeHead(200, { "Content-Type": "application/json" });
-
-    return res.end(
-      JSON.stringify({
-        id: user._id?.toString(),
-        email: user.email,
-        role: user.role,
-        createdAt: user.createdAt,
-      })
-    );
-  }
-
-  async #_test(a: string): Promise<string> {
-    debugger;
-
-    // await new Promise((resolve) => setTimeout(resolve, 3000));
-    if (!a) throw new BadRequestException("Parameter 'a' is required");
-    if (typeof a !== "string")
-      throw new BadRequestException("Parameter 'a' must be a string");
-    console.log("Test method called with:", a);
-    return a;
+  async me(userId: string): Promise<Omit<User, "password">> {
+    const user = await this.userRepo.findById(userId);
+    if (!user) throw new NotFoundException("User not found");
+    const { password: _, ...safe } = user;
+    return safe;
   }
 }
